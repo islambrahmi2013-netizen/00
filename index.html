@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>سباق النخبة</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="game-shell">
+    <header>
+      <div>
+        <p class="eyebrow">سباق الشوارع</p>
+        <h1>سباق النخبة</h1>
+      </div>
+      <div class="stats" aria-live="polide">
+        <div><span>المسافة</span><strong id="score">0</strong></div>
+        <div><span>أفضل نتيجة</span><strong id="best">0</strong></div>
+      </div>
+    </header>
+
+    <section class="game-area">
+      <canvas id="gameCanvas" width="480" height="720" aria-label="لعبة سباق سيارات"></canvas>
+
+      <div id="startScreen" class="overlay">
+        <div class="panel">
+          <div class="trophy">🏁</div>
+          <h2>هل أنت مستعد؟</h2>
+          <p>تفادى السيارات، اجمع العملة، وواصل أطول مسافة!</p>
+          <button id="startButton" type="button">ابدأ السباق</button>
+          <small>← → أو حرك السيارة باللمس</small>
+        </div>
+      </div>
+
+      <div id="gameOverScreen" class="overlay hidden">
+        <div class="panel">
+          <div class="trophy">🚗</div>
+          <h2>انتهى السباق!</h2>
+          <p>قطع مسافة <strong id="finalScore">0</strong> متر</p>
+          <button id="restartButton" type="button">جرب مرة أخرى</button>
+        </div>
+      </div>
+
+      <div class="touch-controls" aria-label="أزرار التحكم">
+        <button id="leftButton" type="button" aria-label="تحرك يسارا">‹</button>
+        <button id="rightButton" type="button" aria-label="تحرك يمينا">›</button>
+      </div>
+    </section>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
