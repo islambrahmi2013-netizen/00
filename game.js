@@ -10,7 +10,9 @@ const bestElement = document.getElementById('best');
 const finalScoreElement = document.getElementById('finalScore');
 
 const road = { left: 45, width: 390 };
+const lanes = [82, 176, 270, 364].map(center => center - 24);
 const player = { x: 216, y: 610, width: 48, height: 78, speed: 7 };
+const jumpFrames = 42;
 
 let enemies = [];
 let coins = [];
@@ -21,6 +23,7 @@ let best = Number(localStorage.getItem('eliteRacingBest') || 0);
 let roadOffset = 0;
 let enemyTimer = 0;
 let coinTimer = 0;
+let jumpTimer = 0;
 let speed = 4;
 let running = false;
 let animationId = 0;
@@ -28,8 +31,7 @@ let animationId = 0;
 bestElement.textContent = best;
 
 function randomLane() {
-  const lanes = [82, 176, 270, 364];
-  return lanes[Math.floor(Math.random() * lanes.length)] - 24;
+  return lanes[Math.floor(Math.random() * lanes.length)];
 }
 
 function roundedRect(x, y, width, height, radius) {
@@ -56,9 +58,14 @@ function drawRoad() {
   }
 }
 
-function drawCar(car, color, isPlayer = false) {
+function drawCar(car, color, isPlayer = false, jumping = false) {
   ctx.save();
   ctx.translate(car.x, car.y);
+  if (jumping) {
+    ctx.shadowColor = 'rgba(0,0,0,.65)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 18;
+  }
   ctx.fillStyle = 'rgba(0,0,0,.32)';
   ctx.fillRect(5, 8, car.width - 2, car.height);
   ctx.fillStyle = '#050505';
@@ -123,11 +130,24 @@ function burst(x, y, color) {
   }
 }
 
-function spawnEnemy() {
-  enemies.push({
-    x: randomLane(), y: -90, width: 48, height: 78,
-    color: ['#ef4444', '#a855f7', '#14b8a6', '#f97316'][Math.floor(Math.random() * 4)]
-  });
+function spawnEnemyWave() {
+  // Raise the challenge gradually, but always leave at least one lane open.
+  const carCount = score > 1800 ? 3 : (score > 500 ? 2 : 1);
+  const openLane = Math.floor(Math.random() * lanes.length);
+  const availableLanes = lanes.filter((_, index) => index !== openLane);
+
+  for (let i = availableLanes.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [availableLanes[i], availableLanes[j]] = [availableLanes[j], availableLanes[i]];
+  }
+
+  const colors = ['#ef4444', '#a855f7', '#14b8a6', '#f97316', '#e11d48', '#0ea5e9'];
+  for (let i = 0; i < carCount; i++) {
+    enemies.push({
+      x: availableLanes[i], y: -90 - (i % 2) * 35, width: 48, height: 78,
+      color: colors[Math.floor(Math.random() * colors.length)]
+    });
+  }
 }
 
 function spawnCoin() {
@@ -140,13 +160,15 @@ function update() {
   if (keys.ArrowRight || keys.KeyD) player.x += player.speed;
   player.x = Math.max(road.left + 8, Math.min(road.left + road.width - player.width - 8, player.x));
 
+  if (jumpTimer > 0) jumpTimer--;
   enemyTimer++;
   coinTimer++;
-  if (enemyTimer > Math.max(28, 70 - speed * 3)) {
-    spawnEnemy();
+  const spawnInterval = Math.max(22, 62 - speed * 3.2);
+  if (enemyTimer > spawnInterval) {
+    spawnEnemyWave();
     enemyTimer = 0;
   }
-  if (coinTimer > 115) {
+  if (coinTimer > 105) {
     spawnCoin();
     coinTimer = 0;
   }
@@ -162,8 +184,12 @@ function update() {
   });
   particles = particles.filter(particle => particle.life > 0);
 
+  const jumpProgress = jumpTimer / jumpFrames;
+  const jumpHeight = jumpTimer > 0 ? Math.sin(jumpProgress * Math.PI) * 62 : 0;
+  const playerHitbox = { x: player.x, y: player.y - jumpHeight, width: player.width, height: player.height };
+
   for (const enemy of enemies) {
-    if (collision(player, enemy)) {
+    if (collision(playerHitbox, enemy)) {
       burst(player.x + player.width / 2, player.y + player.height / 2, '#ef4444');
       endGame();
       return;
@@ -171,7 +197,7 @@ function update() {
   }
 
   coins = coins.filter(coin => {
-    if (collision(player, coin)) {
+    if (collision(playerHitbox, coin)) {
       score += 25;
       burst(coin.x + 12, coin.y + 12, '#facc15');
       return false;
@@ -179,7 +205,7 @@ function update() {
     return true;
   });
   score++;
-  speed = Math.min(10, 4 + score / 500);
+  speed = Math.min(12, 4 + score / 360);
   scoreElement.textContent = score;
 }
 
@@ -188,7 +214,9 @@ function draw() {
   enemies.forEach(enemy => drawCar(enemy, enemy.color));
   coins.forEach(drawCoin);
   particles.forEach(drawParticle);
-  drawCar(player, '#2563eb', true);
+  const jumpProgress = jumpTimer / jumpFrames;
+  const jumpHeight = jumpTimer > 0 ? Math.sin(jumpProgress * Math.PI) * 62 : 0;
+  drawCar({ ...player, y: player.y - jumpHeight }, '#2563eb', true, jumpTimer > 0);
 }
 
 function loop() {
@@ -208,6 +236,7 @@ function startGame() {
   speed = 4;
   enemyTimer = 0;
   coinTimer = 0;
+  jumpTimer = 0;
   roadOffset = 0;
   player.x = 216;
   scoreElement.textContent = '0';
@@ -231,9 +260,10 @@ function endGame() {
 }
 
 window.addEventListener('keydown', event => {
-  if (['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD', ' '].includes(event.code)) {
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'KeyA', 'KeyD', ' '].includes(event.code)) {
     event.preventDefault();
   }
+  if (event.code === 'ArrowUp' && running && jumpTimer === 0) jumpTimer = jumpFrames;
   keys[event.code] = true;
 });
 window.addEventListener('keyup', event => { keys[event.code] = false; });
