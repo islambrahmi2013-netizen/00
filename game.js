@@ -130,22 +130,79 @@ function roundedRect(x, y, width, height, radius) {
   ctx.roundRect(x, y, width, height, radius);
 }
 
-function drawRoad() {
-  ctx.fillStyle = '#1e293b';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#334155';
-  ctx.fillRect(road.left, 0, road.width, canvas.height);
+function drawTree(x, y, scale) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = 'rgba(0,0,0,.2)';
+  ctx.beginPath();
+  ctx.ellipse(0, 25, 16, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#713f12';
+  ctx.fillRect(-3, 5, 6, 22);
+  ctx.fillStyle = '#166534';
+  ctx.beginPath();
+  ctx.arc(0, -2, 15, 0, Math.PI * 2);
+  ctx.fill();
   ctx.fillStyle = '#22c55e';
-  ctx.fillRect(0, 0, road.left, canvas.height);
-  ctx.fillRect(road.left + road.width, 0, canvas.width - road.left - road.width, canvas.height);
-  ctx.fillStyle = '#f8fafc';
-  ctx.fillRect(road.left - 8, 0, 8, canvas.height);
-  ctx.fillRect(road.left + road.width, 0, 8, canvas.height);
-  ctx.fillStyle = '#facc15';
+  ctx.beginPath();
+  ctx.arc(-5, -8, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawRoad() {
+  const grass = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  grass.addColorStop(0, '#166534');
+  grass.addColorStop(.5, '#15803d');
+  grass.addColorStop(1, '#14532d');
+  ctx.fillStyle = grass;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Scrolling roadside trees and subtle grass flecks add depth to the map.
+  for (let i = 0; i < 7; i++) {
+    const y = ((i * 132 + roadOffset * 2.2) % (canvas.height + 160)) - 80;
+    const scale = .72 + (i % 3) * .12;
+    drawTree(20 + (i % 2) * 12, y, scale);
+    drawTree(460 - (i % 2) * 12, y - 55, scale);
+    ctx.fillStyle = 'rgba(187,247,208,.25)';
+    ctx.fillRect(road.left - 20 - (i % 3) * 5, y + 46, 3, 10);
+    ctx.fillRect(road.left + road.width + 15 + (i % 3) * 5, y - 20, 3, 10);
+  }
+
+  const asphalt = ctx.createLinearGradient(road.left, 0, road.left + road.width, 0);
+  asphalt.addColorStop(0, '#263449');
+  asphalt.addColorStop(.5, '#3b4656');
+  asphalt.addColorStop(1, '#263449');
+  ctx.fillStyle = asphalt;
+  ctx.fillRect(road.left, 0, road.width, canvas.height);
+
+  // Road shoulders, rumble strips and edge lines.
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillRect(road.left - 9, 0, 9, canvas.height);
+  ctx.fillRect(road.left + road.width, 0, 9, canvas.height);
+  for (let y = roadOffset % 36 - 36; y < canvas.height; y += 36) {
+    ctx.fillStyle = Math.floor((y + roadOffset) / 36) % 2 ? '#f8fafc' : '#ef4444';
+    ctx.fillRect(road.left - 13, y, 4, 18);
+    ctx.fillRect(road.left + road.width + 9, y, 4, 18);
+  }
+  ctx.fillStyle = 'rgba(255,255,255,.82)';
+  ctx.fillRect(road.left + 5, 0, 3, canvas.height);
+  ctx.fillRect(road.left + road.width - 8, 0, 3, canvas.height);
+
+  // Dashed lane dividers.
+  ctx.fillStyle = 'rgba(255,255,255,.72)';
   for (let y = roadOffset - 100; y < canvas.height + 100; y += 100) {
     for (let line = 1; line < 4; line++) {
-      ctx.fillRect(road.left + line * (road.width / 4) - 3, y, 6, 48);
+      ctx.fillRect(road.left + line * (road.width / 4) - 2, y, 4, 48);
     }
+  }
+  // Small asphalt highlights provide texture without obscuring gameplay.
+  ctx.fillStyle = 'rgba(255,255,255,.08)';
+  for (let i = 0; i < 18; i++) {
+    const x = road.left + 18 + ((i * 73) % (road.width - 36));
+    const y = (i * 97 + roadOffset * .65) % canvas.height;
+    ctx.fillRect(x, y, 2, 7);
   }
 }
 
@@ -153,29 +210,69 @@ function drawCar(car, color, isPlayer = false, jumping = false) {
   ctx.save();
   ctx.translate(car.x, car.y);
   if (jumping) {
-    ctx.shadowColor = 'rgba(0,0,0,.65)';
+    ctx.shadowColor = 'rgba(0,0,0,.6)';
     ctx.shadowBlur = 12;
     ctx.shadowOffsetY = 18;
   }
-  ctx.fillStyle = 'rgba(0,0,0,.32)';
-  ctx.fillRect(5, 8, car.width - 2, car.height);
-  ctx.fillStyle = '#050505';
-  ctx.fillRect(-5, 12, 12, 22);
-  ctx.fillRect(car.width - 7, 12, 12, 22);
-  ctx.fillRect(-5, car.height - 34, 12, 22);
-  ctx.fillRect(car.width - 7, car.height - 34, 12, 22);
-  ctx.fillStyle = color;
-  roundedRect(0, 0, car.width, car.height, 12);
+
+  // Soft ground shadow.
+  ctx.fillStyle = 'rgba(0,0,0,.3)';
+  ctx.beginPath();
+  ctx.ellipse(car.width / 2 + 3, car.height / 2 + 8, car.width / 2 + 5, car.height / 2, 0, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = isPlayer ? '#bae6fd' : '#94a3b8';
-  roundedRect(7, 12, car.width - 14, 21, 5);
+  ctx.shadowColor = 'transparent';
+
+  // Wheels with highlights.
+  ctx.fillStyle = '#090d14';
+  roundedRect(-5, 13, 12, 22, 4); ctx.fill();
+  roundedRect(car.width - 7, 13, 12, 22, 4); ctx.fill();
+  roundedRect(-5, car.height - 35, 12, 22, 4); ctx.fill();
+  roundedRect(car.width - 7, car.height - 35, 12, 22, 4); ctx.fill();
+  ctx.fillStyle = '#64748b';
+  ctx.fillRect(-2, 17, 3, 13);
+  ctx.fillRect(car.width - 4, 17, 3, 13);
+  ctx.fillRect(-2, car.height - 31, 3, 13);
+  ctx.fillRect(car.width - 4, car.height - 31, 3, 13);
+
+  // Glossy body, side highlights and bumpers.
+  const body = ctx.createLinearGradient(0, 0, car.width, 0);
+  body.addColorStop(0, '#111827');
+  body.addColorStop(.18, color);
+  body.addColorStop(.78, color);
+  body.addColorStop(1, '#111827');
+  ctx.fillStyle = body;
+  roundedRect(0, 0, car.width, car.height, 13);
   ctx.fill();
-  ctx.fillStyle = '#1e293b';
-  roundedRect(9, 39, car.width - 18, 23, 5);
+  ctx.fillStyle = 'rgba(255,255,255,.24)';
+  roundedRect(5, 5, 4, car.height - 10, 3);
   ctx.fill();
-  ctx.fillStyle = '#fde68a';
-  ctx.fillRect(7, 5, 8, 5);
-  ctx.fillRect(car.width - 15, 5, 8, 5);
+  ctx.fillStyle = 'rgba(15,23,42,.75)';
+  roundedRect(7, 10, car.width - 14, 24, 7);
+  ctx.fill();
+  const glass = ctx.createLinearGradient(8, 12, car.width - 8, 34);
+  glass.addColorStop(0, isPlayer ? '#bae6fd' : '#cbd5e1');
+  glass.addColorStop(.45, '#64748b');
+  glass.addColorStop(1, '#1e293b');
+  ctx.fillStyle = glass;
+  roundedRect(9, 13, car.width - 18, 18, 5);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.42)';
+  ctx.fillRect(13, 15, 3, 12);
+  ctx.fillStyle = '#0f172a';
+  roundedRect(9, 38, car.width - 18, 23, 5);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.14)';
+  ctx.fillRect(12, 42, car.width - 24, 2);
+
+  // Headlights, tail lights and bumpers.
+  ctx.fillStyle = '#fff7c2';
+  roundedRect(6, 3, 11, 6, 2); ctx.fill();
+  roundedRect(car.width - 17, 3, 11, 6, 2); ctx.fill();
+  ctx.fillStyle = '#fb7185';
+  roundedRect(6, car.height - 8, 11, 5, 2); ctx.fill();
+  roundedRect(car.width - 17, car.height - 8, 11, 5, 2); ctx.fill();
+  ctx.fillStyle = '#cbd5e1';
+  roundedRect(5, car.height - 3, car.width - 10, 3, 2); ctx.fill();
   ctx.restore();
 }
 
@@ -183,14 +280,27 @@ function drawCoin(coin) {
   ctx.save();
   ctx.translate(coin.x + coin.size / 2, coin.y + coin.size / 2);
   ctx.rotate(coin.angle);
-  ctx.fillStyle = '#fbbf24';
+  ctx.shadowColor = '#fbbf24';
+  ctx.shadowBlur = 14;
+  const gold = ctx.createRadialGradient(-4, -5, 2, 0, 0, coin.size / 2);
+  gold.addColorStop(0, '#fff7c2');
+  gold.addColorStop(.35, '#facc15');
+  gold.addColorStop(1, '#b45309');
+  ctx.fillStyle = gold;
   ctx.beginPath();
   ctx.arc(0, 0, coin.size / 2, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#fff7c2';
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#fff7c2';
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(-3, -3, coin.size / 5, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.arc(0, 0, coin.size / 2 - 3, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = '#fff7c2';
+  ctx.font = 'bold 14px system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('$', 0, 1);
   ctx.restore();
 }
 
