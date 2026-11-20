@@ -14,9 +14,10 @@
         <p class="eyebrow">سباق الشوارع</p>
         <h1>سباق النخبة</h1>
       </div>
-      <div class="stats" aria-live="polide">
+      <div class="stats" aria-live="polite">
         <div><span>المسافة</span><strong id="score">0</strong></div>
         <div><span>أفضل نتيجة</span><strong id="best">0</strong></div>
+        <div><span>عملاتي</span><strong id="coinBalance">0 🪙</strong></div>
       </div>
     </header>
 
@@ -27,9 +28,24 @@
         <div class="panel">
           <div class="trophy">🏁</div>
           <h2>هل أنت مستعد؟</h2>
-          <p>تفادى السيارات، اجمع العملة، وواصل أطول مسافة!</p>
+          <p>تفادى السيارات، اجمع العملات الذهبية، وواصل أطول مسافة!</p>
           <button id="startButton" type="button">ابدأ السباق</button>
-          <small>← → أو حرك السيارة باللمس</small>
+          <button id="shopButton" class="secondary-button" type="button">🚘 متجر السيارات</button>
+          <small>← → للتحرك · ↑ للقفز</small>
+        </div>
+      </div>
+
+      <div id="shopScreen" class="overlay hidden">
+        <div class="panel shop-panel">
+          <div class="shop-heading">
+            <div>
+              <h2>🚘 متجر السيارات</h2>
+              <p>اجمع العملات أثناء السباق واشترِ سيارة جديدة.</p>
+            </div>
+            <strong class="shop-balance" id="shopBalance">0 🪙</strong>
+          </div>
+          <div id="carList" class="car-list"></div>
+          <button id="closeShopButton" class="secondary-button" type="button">رجوع</button>
         </div>
       </div>
 
@@ -37,8 +53,9 @@
         <div class="panel">
           <div class="trophy">🚗</div>
           <h2>انتهى السباق!</h2>
-          <p>قطع مسافة <strong id="finalScore">0</strong> متر</p>
+          <p>قطعت مسافة <strong id="finalScore">0</strong> متر</p>
           <button id="restartButton" type="button">جرب مرة أخرى</button>
+          <button id="menuButton" class="secondary-button" type="button">القائمة الرئيسية</button>
         </div>
       </div>
 

@@ -3,8 +3,15 @@ const ctx = canvas.getContext('2d');
 
 const startScreen = document.getElementById('startScreen');
 const gameOverScreen = document.getElementById('gameOverScreen');
+const shopScreen = document.getElementById('shopScreen');
 const startButton = document.getElementById('startButton');
 const restartButton = document.getElementById('restartButton');
+const shopButton = document.getElementById('shopButton');
+const closeShopButton = document.getElementById('closeShopButton');
+const menuButton = document.getElementById('menuButton');
+const carList = document.getElementById('carList');
+const coinBalanceElement = document.getElementById('coinBalance');
+const shopBalanceElement = document.getElementById('shopBalance');
 const scoreElement = document.getElementById('score');
 const bestElement = document.getElementById('best');
 const finalScoreElement = document.getElementById('finalScore');
@@ -13,6 +20,22 @@ const road = { left: 45, width: 390 };
 const lanes = [82, 176, 270, 364].map(center => center - 24);
 const player = { x: 216, y: 610, width: 48, height: 78, speed: 7 };
 const jumpFrames = 42;
+const cars = [
+  { id: 'blue', name: 'الزرقاء', color: '#2563eb', cost: 0 },
+  { id: 'red', name: 'الحمراء', color: '#ef4444', cost: 8 },
+  { id: 'purple', name: 'البنفسجية', color: '#a855f7', cost: 18 },
+  { id: 'green', name: 'الخضراء', color: '#14b8a6', cost: 30 },
+  { id: 'gold', name: 'الذهبية', color: '#eab308', cost: 50 }
+];
+
+function loadJSON(key, fallback) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key));
+    return value == null ? fallback : value;
+  } catch {
+    return fallback;
+  }
+}
 
 let enemies = [];
 let coins = [];
@@ -20,6 +43,12 @@ let particles = [];
 let keys = {};
 let score = 0;
 let best = Number(localStorage.getItem('eliteRacingBest') || 0);
+let wallet = Math.max(0, Number(localStorage.getItem('eliteRacingCoins') || 0));
+let unlockedCars = loadJSON('eliteRacingCars', ['blue']);
+if (!Array.isArray(unlockedCars)) unlockedCars = ['blue'];
+if (!unlockedCars.includes('blue')) unlockedCars.unshift('blue');
+let selectedCarId = localStorage.getItem('eliteRacingSelectedCar') || 'blue';
+if (!unlockedCars.includes(selectedCarId)) selectedCarId = 'blue';
 let roadOffset = 0;
 let enemyTimer = 0;
 let coinTimer = 0;
@@ -28,7 +57,69 @@ let speed = 4;
 let running = false;
 let animationId = 0;
 
+function selectedCar() {
+  return cars.find(car => car.id === selectedCarId) || cars[0];
+}
+
+function updateWalletDisplay() {
+  coinBalanceElement.textContent = `${wallet} 🪙`;
+  shopBalanceElement.textContent = `${wallet} 🪙`;
+}
+
+function renderShop() {
+  updateWalletDisplay();
+  carList.replaceChildren();
+  for (const car of cars) {
+    const card = document.createElement('div');
+    card.className = 'car-card';
+    const preview = document.createElement('div');
+    preview.className = 'car-preview';
+    preview.style.backgroundColor = car.color;
+    const info = document.createElement('div');
+    info.className = 'car-info';
+    const name = document.createElement('strong');
+    name.textContent = `السيارة ${car.name}`;
+    const price = document.createElement('span');
+    price.textContent = unlockedCars.includes(car.id) ? 'مفتوحة' : `السعر: ${car.cost} 🪙`;
+    info.append(name, price);
+    const action = document.createElement('button');
+    if (selectedCarId === car.id) {
+      action.textContent = 'مختارة';
+      action.disabled = true;
+    } else if (unlockedCars.includes(car.id)) {
+      action.textContent = 'اختر';
+      action.addEventListener('click', () => selectCar(car.id));
+    } else {
+      action.textContent = 'شراء';
+      action.disabled = wallet < car.cost;
+      action.addEventListener('click', () => buyCar(car.id));
+    }
+    card.append(preview, info, action);
+    carList.append(card);
+  }
+}
+
+function selectCar(carId) {
+  if (!unlockedCars.includes(carId)) return;
+  selectedCarId = carId;
+  localStorage.setItem('eliteRacingSelectedCar', selectedCarId);
+  renderShop();
+}
+
+function buyCar(carId) {
+  const car = cars.find(item => item.id === carId);
+  if (!car || unlockedCars.includes(carId) || wallet < car.cost) return;
+  wallet -= car.cost;
+  unlockedCars.push(carId);
+  selectedCarId = carId;
+  localStorage.setItem('eliteRacingCoins', String(wallet));
+  localStorage.setItem('eliteRacingCars', JSON.stringify(unlockedCars));
+  localStorage.setItem('eliteRacingSelectedCar', selectedCarId);
+  renderShop();
+}
+
 bestElement.textContent = best;
+updateWalletDisplay();
 
 function randomLane() {
   return lanes[Math.floor(Math.random() * lanes.length)];
@@ -131,16 +222,13 @@ function burst(x, y, color) {
 }
 
 function spawnEnemyWave() {
-  // Raise the challenge gradually, but always leave at least one lane open.
   const carCount = score > 1800 ? 3 : (score > 500 ? 2 : 1);
   const openLane = Math.floor(Math.random() * lanes.length);
   const availableLanes = lanes.filter((_, index) => index !== openLane);
-
   for (let i = availableLanes.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [availableLanes[i], availableLanes[j]] = [availableLanes[j], availableLanes[i]];
   }
-
   const colors = ['#ef4444', '#a855f7', '#14b8a6', '#f97316', '#e11d48', '#0ea5e9'];
   for (let i = 0; i < carCount; i++) {
     enemies.push({
@@ -187,7 +275,6 @@ function update() {
   const jumpProgress = jumpTimer / jumpFrames;
   const jumpHeight = jumpTimer > 0 ? Math.sin(jumpProgress * Math.PI) * 62 : 0;
   const playerHitbox = { x: player.x, y: player.y - jumpHeight, width: player.width, height: player.height };
-
   for (const enemy of enemies) {
     if (collision(playerHitbox, enemy)) {
       burst(player.x + player.width / 2, player.y + player.height / 2, '#ef4444');
@@ -198,6 +285,9 @@ function update() {
 
   coins = coins.filter(coin => {
     if (collision(playerHitbox, coin)) {
+      wallet++;
+      localStorage.setItem('eliteRacingCoins', String(wallet));
+      updateWalletDisplay();
       score += 25;
       burst(coin.x + 12, coin.y + 12, '#facc15');
       return false;
@@ -216,7 +306,7 @@ function draw() {
   particles.forEach(drawParticle);
   const jumpProgress = jumpTimer / jumpFrames;
   const jumpHeight = jumpTimer > 0 ? Math.sin(jumpProgress * Math.PI) * 62 : 0;
-  drawCar({ ...player, y: player.y - jumpHeight }, '#2563eb', true, jumpTimer > 0);
+  drawCar({ ...player, y: player.y - jumpHeight }, selectedCar().color, true, jumpTimer > 0);
 }
 
 function loop() {
@@ -242,6 +332,7 @@ function startGame() {
   scoreElement.textContent = '0';
   startScreen.classList.add('hidden');
   gameOverScreen.classList.add('hidden');
+  shopScreen.classList.add('hidden');
   running = true;
   loop();
 }
@@ -259,10 +350,23 @@ function endGame() {
   setTimeout(() => gameOverScreen.classList.remove('hidden'), 350);
 }
 
+function openShop() {
+  renderShop();
+  startScreen.classList.add('hidden');
+  shopScreen.classList.remove('hidden');
+}
+
+function returnToMenu() {
+  running = false;
+  cancelAnimationFrame(animationId);
+  gameOverScreen.classList.add('hidden');
+  shopScreen.classList.add('hidden');
+  startScreen.classList.remove('hidden');
+  draw();
+}
+
 window.addEventListener('keydown', event => {
-  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'KeyA', 'KeyD', ' '].includes(event.code)) {
-    event.preventDefault();
-  }
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'KeyA', 'KeyD', ' '].includes(event.code)) event.preventDefault();
   if (event.code === 'ArrowUp' && running && jumpTimer === 0) jumpTimer = jumpFrames;
   keys[event.code] = true;
 });
@@ -282,4 +386,10 @@ bindTouch('leftButton', 'ArrowLeft');
 bindTouch('rightButton', 'ArrowRight');
 startButton.addEventListener('click', startGame);
 restartButton.addEventListener('click', startGame);
+shopButton.addEventListener('click', openShop);
+closeShopButton.addEventListener('click', () => {
+  shopScreen.classList.add('hidden');
+  startScreen.classList.remove('hidden');
+});
+menuButton.addEventListener('click', returnToMenu);
 draw();
