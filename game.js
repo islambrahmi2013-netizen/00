@@ -40,18 +40,14 @@ function roundedRect(x, y, width, height, radius) {
 function drawRoad() {
   ctx.fillStyle = '#1e293b';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
   ctx.fillStyle = '#334155';
   ctx.fillRect(road.left, 0, road.width, canvas.height);
-
   ctx.fillStyle = '#22c55e';
   ctx.fillRect(0, 0, road.left, canvas.height);
   ctx.fillRect(road.left + road.width, 0, canvas.width - road.left - road.width, canvas.height);
-
   ctx.fillStyle = '#f8fafc';
   ctx.fillRect(road.left - 8, 0, 8, canvas.height);
   ctx.fillRect(road.left + road.width, 0, 8, canvas.height);
-
   ctx.fillStyle = '#facc15';
   for (let y = roadOffset - 100; y < canvas.height + 100; y += 100) {
     for (let line = 1; line < 4; line++) {
@@ -63,32 +59,25 @@ function drawRoad() {
 function drawCar(car, color, isPlayer = false) {
   ctx.save();
   ctx.translate(car.x, car.y);
-
   ctx.fillStyle = 'rgba(0,0,0,.32)';
   ctx.fillRect(5, 8, car.width - 2, car.height);
-
   ctx.fillStyle = '#050505';
   ctx.fillRect(-5, 12, 12, 22);
   ctx.fillRect(car.width - 7, 12, 12, 22);
   ctx.fillRect(-5, car.height - 34, 12, 22);
   ctx.fillRect(car.width - 7, car.height - 34, 12, 22);
-
   ctx.fillStyle = color;
   roundedRect(0, 0, car.width, car.height, 12);
   ctx.fill();
-
   ctx.fillStyle = isPlayer ? '#bae6fd' : '#94a3b8';
   roundedRect(7, 12, car.width - 14, 21, 5);
   ctx.fill();
-
   ctx.fillStyle = '#1e293b';
   roundedRect(9, 39, car.width - 18, 23, 5);
   ctx.fill();
-
   ctx.fillStyle = '#fde68a';
   ctx.fillRect(7, 5, 8, 5);
   ctx.fillRect(car.width - 15, 5, 8, 5);
-
   ctx.restore();
 }
 
@@ -117,10 +106,8 @@ function drawParticle(particle) {
 }
 
 function collision(a, b) {
-  return a.x < b.x + b.width &&
-         a.x + a.width > b.x &&
-         a.y < b.y + b.height &&
-         a.y + a.height > b.y;
+  return a.x < b.x + b.width && a.x + a.width > b.x &&
+    a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 function burst(x, y, color) {
@@ -138,22 +125,17 @@ function burst(x, y, color) {
 
 function spawnEnemy() {
   enemies.push({
-    x: randomLane(),
-    y: -90,
-    width: 48,
-    height: 78,
+    x: randomLane(), y: -90, width: 48, height: 78,
     color: ['#ef4444', '#a855f7', '#14b8a6', '#f97316'][Math.floor(Math.random() * 4)]
   });
 }
 
 function spawnCoin() {
-  const x = randomLane() + 4;
-  coins.push({ x, y: -35, size: 24, angle: 0, width: 24, height: 24 });
+  coins.push({ x: randomLane() + 4, y: -35, size: 24, angle: 0, width: 24, height: 24 });
 }
 
 function update() {
   roadOffset = (roadOffset + speed) % 100;
-
   if (keys.ArrowLeft || keys.KeyA) player.x -= player.speed;
   if (keys.ArrowRight || keys.KeyD) player.x += player.speed;
   player.x = Math.max(road.left + 8, Math.min(road.left + road.width - player.width - 8, player.x));
@@ -173,7 +155,6 @@ function update() {
   coins.forEach(coin => { coin.y += speed; coin.angle += .08; });
   enemies = enemies.filter(enemy => enemy.y < canvas.height + 100);
   coins = coins.filter(coin => coin.y < canvas.height + 100);
-
   particles.forEach(particle => {
     particle.x += particle.vx;
     particle.y += particle.vy;
@@ -197,7 +178,6 @@ function update() {
     }
     return true;
   });
-
   score++;
   speed = Math.min(10, 4 + score / 500);
   scoreElement.textContent = score;
@@ -241,7 +221,6 @@ function endGame() {
   running = false;
   cancelAnimationFrame(animationId);
   draw();
-
   if (score > best) {
     best = score;
     localStorage.setItem('eliteRacingBest', String(best));
@@ -252,7 +231,9 @@ function endGame() {
 }
 
 window.addEventListener('keydown', event => {
-  if (['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD', ' '].includes(event.code)) event.preventState?.;
+  if (['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD', ' '].includes(event.code)) {
+    event.preventDefault();
+  }
   keys[event.code] = true;
 });
 window.addEventListener('keyup', event => { keys[event.code] = false; });
@@ -271,5 +252,4 @@ bindTouch('leftButton', 'ArrowLeft');
 bindTouch('rightButton', 'ArrowRight');
 startButton.addEventListener('click', startGame);
 restartButton.addEventListener('click', startGame);
-
 draw();
